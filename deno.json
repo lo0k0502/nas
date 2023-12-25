@@ -1,0 +1,13 @@
+{
+  "version": "1.0.2",
+  "tasks": {
+    "dev": "deno run --watch --allow-net --allow-read='shared' --allow-write='shared' src/main.ts",
+    "start": "deno run --allow-net --allow-read='shared' --allow-write='shared' src/main.ts",
+    "check": "deno cache --reload --lock-write --check src/main.ts"
+  },
+  "fmt": {
+    "singleQuote": true,
+    "lineWidth": 250
+  },
+  "lock": false
+}
