@@ -1,11 +1,11 @@
 import { serveDir } from 'https://deno.land/std@0.208.0/http/file_server.ts';
 import { defaultHeadersArray, port, sharedPath } from './constants.ts';
-import { checkFile, deleteFile, getInfo, listDirectory, uploadFile } from './actions.ts';
+import { checkFile, deleteFile, getEntryInfo, listDirectory, uploadFile } from './actions.ts';
 import { response } from './helpers.ts';
 
 const uploadRoute = new URLPattern({ pathname: '/upload' });
-const resourceRoute = new URLPattern({ pathname: '/:fileURI(.+\\.[A-Za-z0-9]+)' });
-const resourceInfoRoute = new URLPattern({ pathname: '/info/:fileURI(.+)' });
+const resourceRoute = new URLPattern({ pathname: '/:uri(.+\\.[A-Za-z0-9]+)' });
+const resourceInfoRoute = new URLPattern({ pathname: '/info/:uri(.+)' });
 const directoryRoute = new URLPattern({ pathname: '/list/:directory(.+)?' });
 
 const handler = async (req: Request): Promise<Response> => {
@@ -24,7 +24,7 @@ const handler = async (req: Request): Promise<Response> => {
     case matchUpload && req.method === 'POST':
       return await uploadFile(req);
     case matchInfo && req.method === 'GET':
-      return await getInfo(req, matchInfo);
+      return await getEntryInfo(req, matchInfo);
     case matchDirectory && req.method === 'GET':
       return await listDirectory(req, matchDirectory);
     case matchResource && req.method === 'GET':

@@ -1,6 +1,6 @@
 import { mimetypes, sharedPath } from './constants.ts';
 import { DirectoryInfo, DirectoryParams, FileInfo, ResourceParams } from './types.ts';
-import { getDirectoryFiles, response, responseError } from './helpers.ts';
+import { getDirectoryEntries, response, responseError } from './helpers.ts';
 import { getMimeType } from './utils.ts';
 
 const findCategory = (type: string) => Object.entries(mimetypes).find(([_, types]) => types.includes(type))?.[0];
@@ -58,43 +58,44 @@ export const listDirectory = async (req: Request, match: URLPatternResult) => {
   const { directory } = match.pathname.groups as DirectoryParams;
 
   try {
-    let entries: (FileInfo | DirectoryInfo)[] = [];
-    try {
-      const path = `${sharedPath}/${decodeURI(directory)}`;
-      const entry = await Deno.stat(path);
+    const directoryPath = `${sharedPath}/${decodeURI(directory)}`;
 
-      if (entry.isDirectory) entries = await getDirectoryFiles(path, decodeURI(directory));
+    try {
+      const entry = await Deno.stat(directoryPath);
+
+      if (!entry.isDirectory) throw new Error(`${directory} is not a directory`);
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) throw error;
       console.debug('listDirectory Not found: ', error);
     }
 
-    entries = entries.map((entry) => ({ ...entry, url: `${(req.url.endsWith('/') ? req.url : `${req.url}/`).replace('/list', '')}${entry.name}` }));
+    const entries: (FileInfo | DirectoryInfo)[] = await getDirectoryEntries(directoryPath, decodeURI(directory));
+    const entriesWithUrl = entries.map((entry) => ({ ...entry, url: `${(req.url.endsWith('/') ? req.url : `${req.url}/`).replace('/list', '')}${entry.name}` }));
 
-    return response(req, JSON.stringify(entries));
+    return response(req, JSON.stringify(entriesWithUrl));
   } catch (error) {
     return responseError(req, error, { action: 'ListDirectory' });
   }
 };
 
-export const getInfo = async (req: Request, match: URLPatternResult) => {
-  const { fileURI } = match.pathname.groups as ResourceParams;
+export const getEntryInfo = async (req: Request, match: URLPatternResult) => {
+  const { uri } = match.pathname.groups as ResourceParams;
 
   try {
-    const fileInfo = await Deno.stat(`${sharedPath}/${decodeURI(fileURI)}`);
+    const fileInfo = await Deno.stat(`${sharedPath}/${decodeURI(uri)}`);
     console.debug('Get Info: ', fileInfo);
 
-    return response(req, JSON.stringify({ ...fileInfo, type: getMimeType(`${sharedPath}/${decodeURI(fileURI)}`) }));
+    return response(req, JSON.stringify({ ...fileInfo, type: getMimeType(`${sharedPath}/${decodeURI(uri)}`) }));
   } catch (error) {
     return responseError(req, error, { action: 'Check' });
   }
 };
 
 export const checkFile = async (req: Request, match: URLPatternResult) => {
-  const { fileURI } = match.pathname.groups as ResourceParams;
+  const { uri } = match.pathname.groups as ResourceParams;
 
   try {
-    const fileInfo = await Deno.stat(`${sharedPath}/${decodeURI(fileURI)}`);
+    const fileInfo = await Deno.stat(`${sharedPath}/${decodeURI(uri)}`);
     console.debug('Checked: ', fileInfo);
 
     return response(req);
@@ -104,10 +105,10 @@ export const checkFile = async (req: Request, match: URLPatternResult) => {
 };
 
 export const deleteFile = async (req: Request, match: URLPatternResult) => {
-  const { fileURI } = match.pathname.groups as ResourceParams;
+  const { uri } = match.pathname.groups as ResourceParams;
 
   try {
-    await Deno.remove(`${sharedPath}/${decodeURI(fileURI)}`);
+    await Deno.remove(`${sharedPath}/${decodeURI(uri)}`);
 
     return response(req, JSON.stringify('Success'));
   } catch (error) {

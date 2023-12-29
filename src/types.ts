@@ -21,7 +21,7 @@ export interface DirectoryInfo {
 }
 
 export type ResourceParams = {
-  fileURI: string;
+  uri: string;
 };
 
 export type DirectoryParams = {

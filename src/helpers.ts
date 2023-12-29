@@ -25,7 +25,7 @@ export const responseError = (req: Request, error: any, options?: { action?: str
   return response(req, JSON.stringify(errorMsg), { status: 400 });
 };
 
-export const getDirectoryFiles = async (path: string, uriBase?: string) => {
+export const getDirectoryEntries = async (path: string, uriBase?: string) => {
   const entries: (FileInfo | DirectoryInfo)[] = [];
   for await (const entry of Deno.readDir(path)) {
     if (!(entry.isDirectory || entry.isFile) || entry.name === '寶') continue;
@@ -55,7 +55,7 @@ export const getDirectoryFiles = async (path: string, uriBase?: string) => {
       );
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) throw error;
-      console.debug('getDirectoryFiles Not found: ', error);
+      console.debug('getDirectoryEntries Not found: ', error);
     }
   }
 
