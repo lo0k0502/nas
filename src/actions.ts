@@ -69,7 +69,7 @@ export const listDirectory = async (req: Request, match: URLPatternResult) => {
       console.debug('listDirectory Not found: ', error);
     }
 
-    entries = entries.map((entry) => ({ ...entry, url: decodeURI(`${req.url.endsWith('/') ? req.url : `${req.url}/`}${entry.name}`) }));
+    entries = entries.map((entry) => ({ ...entry, url: `${(req.url.endsWith('/') ? req.url : `${req.url}/`).replace('/list', '')}${entry.name}` }));
 
     return response(req, JSON.stringify(entries));
   } catch (error) {

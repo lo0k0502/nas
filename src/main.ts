@@ -5,8 +5,8 @@ import { response } from './helpers.ts';
 
 const uploadRoute = new URLPattern({ pathname: '/upload' });
 const resourceRoute = new URLPattern({ pathname: '/:fileURI(.+\\.[A-Za-z0-9]+)' });
-const resourceInfoRoute = new URLPattern({ pathname: '/info/:fileURI(.+\\.[A-Za-z0-9]+)' });
-const directoryRoute = new URLPattern({ pathname: '/:directory([^\\.]*)' });
+const resourceInfoRoute = new URLPattern({ pathname: '/info/:fileURI(.+)' });
+const directoryRoute = new URLPattern({ pathname: '/list/:directory(.+)?' });
 
 const handler = async (req: Request): Promise<Response> => {
   console.debug(req);
@@ -25,10 +25,10 @@ const handler = async (req: Request): Promise<Response> => {
       return await uploadFile(req);
     case matchInfo && req.method === 'GET':
       return await getInfo(req, matchInfo);
-    case matchResource && req.method === 'GET':
-      return serveDir(req, { fsRoot: sharedPath, enableCors: true, headers: defaultHeadersArray, showDirListing: true });
     case matchDirectory && req.method === 'GET':
       return await listDirectory(req, matchDirectory);
+    case matchResource && req.method === 'GET':
+      return serveDir(req, { fsRoot: sharedPath, enableCors: true, headers: defaultHeadersArray, showDirListing: true });
     case matchResource && req.method === 'OPTIONS':
       return await checkFile(req, matchResource);
     case matchResource && req.method === 'DELETE':
