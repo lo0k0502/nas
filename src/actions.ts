@@ -1,12 +1,11 @@
 import { mimetypes, sharedPath } from './constants.ts';
-import { AllResourceParams, FileInfo, ResourceParams, UploadParams } from './types.ts';
-import { getFiles, response, responseError } from './helpers.ts';
+import { DirectoryInfo, DirectoryParams, FileInfo, ResourceParams } from './types.ts';
+import { getDirectoryFiles, response, responseError } from './helpers.ts';
+import { getMimeType } from './utils.ts';
 
 const findCategory = (type: string) => Object.entries(mimetypes).find(([_, types]) => types.includes(type))?.[0];
 
-export const uploadFile = async (req: Request, match: URLPatternResult) => {
-  const { hospital } = match.pathname.groups as UploadParams;
-
+export const uploadFile = async (req: Request) => {
   try {
     const formData = await req.formData();
 
@@ -21,9 +20,9 @@ export const uploadFile = async (req: Request, match: URLPatternResult) => {
       const filenameArray = (name === 'file' ? file.name : name).split('/');
       const filePrefixPath = filenameArray.slice(0, -1).join('/');
       const filename = filenameArray.at(-1);
-      const writePath = `${sharedPath}/${hospital}/${fileCategory}${filePrefixPath && `/${filePrefixPath}`}`;
+      const writePath = `${sharedPath}${filePrefixPath && `/${filePrefixPath}`}`;
       const writeFilePath = `${writePath}/${filename}`;
-      const fileURI = `${fileCategory}${filePrefixPath && `/${filePrefixPath}`}/${filename}`;
+      const fileURI = `${filePrefixPath && `${filePrefixPath}/`}${filename}`;
 
       let exists = false;
       try {
@@ -55,33 +54,47 @@ export const uploadFile = async (req: Request, match: URLPatternResult) => {
   }
 };
 
-export const listFiles = async (req: Request, match: URLPatternResult) => {
-  const { hospital } = match.pathname.groups as AllResourceParams;
+export const listDirectory = async (req: Request, match: URLPatternResult) => {
+  const { directory } = match.pathname.groups as DirectoryParams;
 
   try {
-    let files: FileInfo[] = [];
+    let entries: (FileInfo | DirectoryInfo)[] = [];
     try {
-      const entry = await Deno.stat(`${sharedPath}/${hospital}`);
-      if (entry.isDirectory) files = await getFiles(`${sharedPath}/${hospital}`);
+      const path = `${sharedPath}/${decodeURI(directory)}`;
+      const entry = await Deno.stat(path);
+
+      if (entry.isDirectory) entries = await getDirectoryFiles(path, decodeURI(directory));
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) throw error;
+      console.debug('listDirectory Not found: ', error);
     }
 
-    files = files.map((file) => ({ ...file, url: `${req.url}/${file.uri}` }));
+    entries = entries.map((entry) => ({ ...entry, url: decodeURI(`${req.url.endsWith('/') ? req.url : `${req.url}/`}${entry.name}`) }));
 
-    return response(req, JSON.stringify(files));
+    return response(req, JSON.stringify(entries));
   } catch (error) {
-    return responseError(req, error, { action: 'List' });
+    return responseError(req, error, { action: 'ListDirectory' });
+  }
+};
+
+export const getInfo = async (req: Request, match: URLPatternResult) => {
+  const { fileURI } = match.pathname.groups as ResourceParams;
+
+  try {
+    const fileInfo = await Deno.stat(`${sharedPath}/${decodeURI(fileURI)}`);
+    console.debug('Get Info: ', fileInfo);
+
+    return response(req, JSON.stringify({ ...fileInfo, type: getMimeType(`${sharedPath}/${decodeURI(fileURI)}`) }));
+  } catch (error) {
+    return responseError(req, error, { action: 'Check' });
   }
 };
 
 export const checkFile = async (req: Request, match: URLPatternResult) => {
-  const { hospital, type, fileURI } = match.pathname.groups as ResourceParams;
+  const { fileURI } = match.pathname.groups as ResourceParams;
 
   try {
-    if (!Object.keys(mimetypes).includes(type)) throw new Error('Unknown file category');
-
-    const fileInfo = await Deno.stat(`${sharedPath}/${hospital}/${type}/${decodeURI(fileURI)}`);
+    const fileInfo = await Deno.stat(`${sharedPath}/${decodeURI(fileURI)}`);
     console.debug('Checked: ', fileInfo);
 
     return response(req);
@@ -91,12 +104,10 @@ export const checkFile = async (req: Request, match: URLPatternResult) => {
 };
 
 export const deleteFile = async (req: Request, match: URLPatternResult) => {
-  const { hospital, type, fileURI } = match.pathname.groups as ResourceParams;
+  const { fileURI } = match.pathname.groups as ResourceParams;
 
   try {
-    if (!Object.keys(mimetypes).includes(type)) throw new Error('Unknown file category');
-
-    await Deno.remove(`${sharedPath}/${hospital}/${type}/${decodeURI(fileURI)}`);
+    await Deno.remove(`${sharedPath}/${decodeURI(fileURI)}`);
 
     return response(req, JSON.stringify('Success'));
   } catch (error) {

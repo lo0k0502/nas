@@ -5,7 +5,7 @@ export const defaultHeaders = {
 };
 export const defaultHeadersArray = ['Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE'];
 
-export const sharedPath = 'shared';
+export const sharedPath = Deno.env.get('SHARED_PATH') || 'shared';
 
 export const mimetypes = {
   pdf: ['application/pdf'],

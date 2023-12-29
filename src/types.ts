@@ -2,6 +2,7 @@
 export type Class<T, S extends any[] = []> = { new (...args: S): T };
 
 export interface FileInfo {
+  is: 'file';
   name: string;
   uri: string;
   url: string;
@@ -10,16 +11,19 @@ export interface FileInfo {
   uploadedAt: Date | null;
 }
 
-export type UploadParams = {
-  hospital: string;
-};
+export interface DirectoryInfo {
+  is: 'directory';
+  name: string;
+  uri: string;
+  url: string;
+  size: number;
+  uploadedAt: Date | null;
+}
 
 export type ResourceParams = {
-  hospital: string;
-  type: string;
   fileURI: string;
 };
 
-export type AllResourceParams = {
-  hospital: string;
+export type DirectoryParams = {
+  directory: string;
 };

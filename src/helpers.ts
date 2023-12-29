@@ -1,5 +1,5 @@
 import { defaultHeaders, nowString } from './constants.ts';
-import { Class, FileInfo } from './types.ts';
+import { Class, DirectoryInfo, FileInfo } from './types.ts';
 import { getMimeType } from './utils.ts';
 
 export const response = (req: Request, body?: BodyInit | null, init?: ResponseInit) => {
@@ -25,24 +25,39 @@ export const responseError = (req: Request, error: any, options?: { action?: str
   return response(req, JSON.stringify(errorMsg), { status: 400 });
 };
 
-export const getFiles = async (dirPath: string) => {
-  const files: FileInfo[] = [];
+export const getDirectoryFiles = async (path: string, uriBase?: string) => {
+  const entries: (FileInfo | DirectoryInfo)[] = [];
+  for await (const entry of Deno.readDir(path)) {
+    if (!(entry.isDirectory || entry.isFile) || entry.name === '寶') continue;
 
-  for await (const file of Deno.readDir(dirPath)) {
-    if (file.isDirectory) files.push(...(await getFiles(`${dirPath}/${file.name}`)));
-    else if (file.isFile && !file.name.startsWith('.')) {
-      const fileInfo = await Deno.stat(`${dirPath}/${file.name}`);
-      const uri = `${dirPath}/${file.name}`.split('/').slice(2).join('/');
-      files.push({
-        name: file.name,
-        uri,
-        url: '',
-        type: getMimeType(`${dirPath}/${file.name}`),
-        size: fileInfo.size,
-        uploadedAt: fileInfo.mtime,
-      });
+    try {
+      const fileInfo = await Deno.stat(`${path}/${entry.name}`);
+      const uri = `${uriBase}/${entry.name}`.replace(/^\//, '');
+      entries.push(
+        entry.isFile
+          ? {
+            is: 'file',
+            name: entry.name,
+            uri,
+            url: '',
+            type: getMimeType(`${path}/${entry.name}`),
+            size: fileInfo.size,
+            uploadedAt: fileInfo.mtime,
+          }
+          : {
+            is: 'directory',
+            name: entry.name,
+            uri,
+            url: '',
+            size: fileInfo.size,
+            uploadedAt: fileInfo.mtime,
+          },
+      );
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) throw error;
+      console.debug('getDirectoryFiles Not found: ', error);
     }
   }
 
-  return files;
+  return entries;
 };
